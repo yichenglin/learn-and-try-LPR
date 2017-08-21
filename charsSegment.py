@@ -8,6 +8,7 @@ import numpy as np
 
 __JumpNum=9
 __charHigh=15
+__charWidth=3
 __maxLeft=10
 __maxRight=130
 __LeftMove=1.15
@@ -20,6 +21,10 @@ def setJumpNum(num):
 def setcharHigh(high):
     global __charHigh
     __charHigh= high
+
+def setcharWidth(width):
+    global __charWidth
+    __charWidth=width
 
 def setmaxLeft(left):
     global __maxLeft
@@ -46,9 +51,19 @@ def ImageGrey(src):
 # 此处二值化用的是opencv的Otsu'二值化
 # 对蓝色车牌识别采用的参数为：cv2.THRESH_OTSU +cv2.THRESH_BINARY
 # 对黄色车牌识别用参数cv2.THRESH_BINARY_INV代替cv2.THRESH_BINARY
-# 此处缺少对黄色车牌和蓝色车牌的判断，应该改进
+# 当黑色的方块数目小于一半时，判断为黄色车牌
 def ImageThreshold(grey):
     ret, dst = cv2.threshold(grey, 0, 255, cv2.THRESH_OTSU + cv2.THRESH_BINARY)
+    rows, cols = src_grey.shape
+    x = 0
+    i = 0
+    for i in range(rows):
+        j = 0
+        for j in range(cols):
+            if dst[i, j] == 0:
+                x += 1
+    if x / (rows * cols) < 0.5:
+        ret, dst = cv2.threshold(src_grey, 0, 255, cv2.THRESH_OTSU + cv2.THRESH_BINARY_INV)
     return ret, dst
 
 
@@ -87,7 +102,7 @@ def GetContours(src, dst):
 # 求出每个轮廓的最小外接矩形
 # (x,y)为矩形左上角坐标，(w,h)是矩形的宽和高
 # 根据x和h的范围，选取大小合适的矩形即为字符
-# 此处x和h的值为经验权值
+# 此处x的左右范围和字符的高度和宽带是经验权值
 # 然后我们将每个选中的矩形的[x,y,w,h]加入一个列表中
 # 对列表进行排序，得到按x大小排列的以[x,y,w,h]为元素的列表
 def GetRectangle(contours):
@@ -98,7 +113,8 @@ def GetRectangle(contours):
         if x > __maxLeft:
             if x < __maxRight:
                 if h > __charHigh:
-                    img_ROI.append([x, y, w, h])
+                    if w<__charWidth:
+                      img_ROI.append([x, y, w, h])
 
     img_ROI.sort()
     return img_ROI
